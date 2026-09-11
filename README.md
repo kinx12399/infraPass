@@ -11,7 +11,7 @@
 | 내부 LB | HTTP 8080 → WAS 8080 | 192.168.22.19 |
 | WAS | Python FastAPI + Uvicorn 2 workers | 192.168.22.6 / 192.168.22.9 |
 | DB 접속 | MySQL 8.x, SQLAlchemy, PyMySQL | **192.168.23.7:3306 (VIP)** |
-| DB 노드 | DRBD Active-Standby (사용자 별도 구성) | 192.168.23.5 / 192.168.23.6 |
+| DB 노드 | DRBD Active-Standby | 192.168.23.5 / 192.168.23.6 |
 
 Node 빌드 없이 Nginx가 `web/`를 제공합니다. API는 같은 도메인의 `/api/`로 호출하며 CORS 개방 없이 Origin을 검사합니다. 세션·글·관심 자격증은 MySQL에 저장하여 WAS 사이에 공유합니다.
 
