@@ -1,6 +1,7 @@
-# InfraPass
+# IXcloud 를 이용한 3Tier 아키텍쳐
 
 인프라·보안 자격증 탐색과 수험 커뮤니티를 위한 **IXcloud 기반 3-Tier 고가용성 서비스**입니다.
+http://1.201.170.59/
 
 **Cloud & Network**
 
