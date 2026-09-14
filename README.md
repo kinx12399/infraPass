@@ -51,16 +51,15 @@ python -m pytest -q
 
 ## VM 최초 배포
 
-Git 원격 저장소 생성·push는 사용자가 진행합니다. 아래 `<REPO_URL>`을 실제 주소로 바꾸세요. 모든 VM에서 경로는 `/opt/infrapass`로 통일합니다. 배포 계정이 체크아웃을 소유하며 앱 서비스 사용자는 소스를 읽기만 합니다.
+Git 원격 저장소 생성·push는 사용자가 진행합니다. 아래 `<REPO_URL>`을 실제 주소로 바꾸세요. Ubuntu 계정의 `~/infraPass`(`/home/ubuntu/infraPass`)를 사용합니다. 이미 clone한 VM은 clone을 반복하지 않습니다. WAS 서비스는 `ubuntu`로 실행하며 systemd에서 홈과 시스템 경로를 읽기 전용으로 제한합니다.
 
 ### WEB 두 대
 
 ```bash
 sudo apt update
 sudo apt install -y nginx git curl
-sudo install -d -o "$USER" -g "$USER" /opt/infrapass
-git clone <REPO_URL> /opt/infrapass
-cd /opt/infrapass
+git clone <REPO_URL> ~/infraPass
+cd ~/infraPass
 sudo install -d /var/www/infrapass
 sudo install -m 0644 web/index.html web/app.js web/styles.css /var/www/infrapass/
 sudo install -m 0644 deploy/nginx.conf /etc/nginx/sites-available/infrapass
@@ -82,14 +81,13 @@ curl --fail http://127.0.0.1/healthz
 ```bash
 sudo apt update
 sudo apt install -y python3 python3-venv python3-dev build-essential git curl
-sudo useradd --system --no-create-home --shell /usr/sbin/nologin infrapass
-sudo install -d -o "$USER" -g "$USER" /opt/infrapass
-git clone <REPO_URL> /opt/infrapass
-cd /opt/infrapass
+git clone <REPO_URL> ~/infraPass
+cd ~/infraPass
 python3 -m venv .venv
 .venv/bin/python -m pip install -r requirements.txt
-sudo install -m 0600 .env.example /etc/infrapass.env
-sudoedit /etc/infrapass.env
+test -e .env || (umask 077; cp .env.example .env)
+chmod 600 .env
+nano .env
 ```
 
 `DB_PASSWORD`, 실제 HTTPS `APP_ORIGIN`을 설정합니다. 두 WAS 모두 동일한 DB를 사용합니다. 운영은 `COOKIE_SECURE=true`, `DATABASE_URL` 미설정. 도메인이 아직 없다면 HTTPS LB 접속 주소를 사용하되 인증서가 일치해야 합니다.
@@ -102,7 +100,7 @@ DB 관리자에게 `infrapass` 데이터베이스(utf8mb4)를 만들고 WAS 두 
 .venv/bin/python -m app.manage seed
 ```
 
-설정 파일을 로드해 실행하려면 root 셸에서 `set -a; source /etc/infrapass.env; set +a`를 사용합니다. env 값에 특수문자가 있으면 셸에서 안전하게 작은따옴표로 감싸세요. 비밀번호는 명령 인수·Git·로그에 남기지 마세요. 스키마 생성 후 런타임 계정으로 복귀합니다.
+프로젝트의 `.env`는 앱이 자동으로 읽으며 systemd도 같은 파일을 사용합니다. 초기화 전용 계정은 명령 실행 시 환경변수로 일시 지정하고 `.env`에는 런타임 계정을 유지합니다. 비밀번호는 Git·로그에 남기지 마세요. DB 테이블·초기 데이터는 이미 생성했다면 반복할 필요가 없습니다.
 
 ```bash
 sudo install -m 0644 deploy/infrapass.service /etc/systemd/system/infrapass.service
@@ -131,7 +129,7 @@ curl --fail http://127.0.0.1:8080/api/health/ready
 
 스크립트는 `git pull --ff-only`만 사용하며 로컬 변경이 있으면 중단합니다. 자동 reset·자동 DB 마이그레이션·자동 롤백은 하지 않습니다. 업데이트 실패 시 노드를 LB에 복귀시키지 말고 원인을 해결하거나 검증된 커밋을 명시적으로 재배포하세요. 웹 자산은 요청 단위의 원자 배포가 아니므로 반드시 노드를 LB에서 제외한 뒤 갱신합니다.
 
-Nginx/systemd 설정 자체의 변경은 diff 검토 후 최초 설치 명령으로 별도 반영합니다. DB 스키마 변경은 향후 버전별 마이그레이션을 추가하고 한 번만 실행합니다. `init`은 초기 테이블 생성용이며 스키마 업그레이드 도구가 아닙니다. `seed`는 기존 관리자 편집 내용을 덮어쓰지 않습니다.
+WAS 업데이트 스크립트는 저장소의 `deploy/infrapass.service`를 설치하고 daemon-reload 후 재시작합니다. 서버의 서비스 파일을 별도로 편집하지 말고 저장소에서 변경하세요. Nginx 설정 변경은 diff 검토 후 최초 설치 명령으로 별도 반영합니다. DB 스키마 변경은 향후 버전별 마이그레이션을 추가하고 한 번만 실행합니다. `init`은 초기 테이블 생성용이며 스키마 업그레이드 도구가 아닙니다. `seed`는 기존 관리자 편집 내용을 덮어쓰지 않습니다.
 
 ## DB HA와 운영 검증
 

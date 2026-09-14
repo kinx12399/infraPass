@@ -4,7 +4,7 @@ set -euo pipefail
 # Usage: bash deploy/update.sh web|was
 role="${1:-}"
 case "$role" in web|was) ;; *) echo 'Usage: bash deploy/update.sh web|was'; exit 2;; esac
-cd /opt/infrapass
+cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.."
 if [[ -n "$(git status --porcelain)" ]]; then
   echo 'Checkout has local changes. Resolve before deployment.' >&2; exit 1
 fi
@@ -18,6 +18,8 @@ if [[ "$role" == web ]]; then
 else
   .venv/bin/python -m pip install -r requirements.txt
   # Schema changes are a separate, reviewed step on one WAS only.
+  sudo install -m 0644 deploy/infrapass.service /etc/systemd/system/infrapass.service
+  sudo systemctl daemon-reload
   sudo systemctl restart infrapass
   healthy=false
   for attempt in {1..15}; do
